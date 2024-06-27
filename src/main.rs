@@ -144,6 +144,16 @@ fn poll_endpoint<T: UsbContext>(
     loop {
         let mut buf = [0u8; BUFFER_SIZE];
         let g_hdl = handle.lock();
+        // daemon is using async version
+        // see the `struct libusb_transfer`
+        // `libusb_fill_bulk_transfer` specifically
+        // https://github.com/a1ien/rusb/issues/62
+        // https://github.com/a1ien/rusb/pull/155
+        // well there's no support for rUSB for async operation... yet
+        // either hack my way or try others PR
+        //
+        // > I don't think it's currently possible to use write_bulk in a way that adds 
+        // a zero-length packet if the data length is a multiple of the maximum packet size.
         let res = g_hdl.read_bulk(endpoint.address, &mut buf, timeout);
         drop(g_hdl);
         match res {
@@ -239,6 +249,7 @@ fn main() -> Result<(), anyhow::Error> {
             // `dev_node_list_init` (start two threads)
             //   - `dev_send_thread`
             //   - `dev_recv_thread`
+            //      - usb_ev_loop (`libusb_handle_events_timeout`)
         }
     }
     for hdl in handles.into_iter() {
